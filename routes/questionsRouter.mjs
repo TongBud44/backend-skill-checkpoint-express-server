@@ -43,6 +43,41 @@ questionsRouter.get("/", async (req, res) => {
   });
 });
 
+// Search question มี query parameter
+questionsRouter.get("/search", async (req, res) => {
+  const { title, category } = req.query;
+
+  // ตรวจสอบว่าอย่างน้อยหนึ่งในสองพารามิเตอร์นี้ต้องถูกส่งมา
+  if (!title && !category) {
+    return res.status(400).json({
+      message: "Invalid search parameters.",
+    });
+  }
+
+  try {
+    // สร้างเงื่อนไข SQL ตามพารามิเตอร์ที่มี
+    let query = "SELECT * FROM questions WHERE ";
+    const values = [];
+    if (title) {
+      query += "title LIKE $1 ";
+      values.push(`%${title}%`);
+    }
+    if (category) {
+      if (values.length > 0) query += "AND "; // เพิ่ม AND หากมีเงื่อนไข title อยู่แล้ว
+      query += "category LIKE $2 ";
+      values.push(`%${category}%`);
+    }
+
+    // ค้นหาข้อมูลในฐานข้อมูล
+    const results = await connectionPool.query(query, values);
+    return res.status(200).json({ data: results.rows });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Unable to fetch a question.",
+    });
+  }
+});
+
 // GET question โดยระบุ id
 questionsRouter.get("/:questionId", async (req, res) => {
   const questionIdFromClient = req.params.questionId;
